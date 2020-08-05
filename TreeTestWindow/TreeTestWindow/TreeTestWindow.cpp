@@ -73,6 +73,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
             // 키보드 입력 메시지를 가공하여 프로그램에서 쉽게 쓸 수 있도록 해 준다. 
+            // 전달된 메시지가 WM_KEYDOWN인지와 눌려진 키가 문자키인지 검사해 보고 조건이 맞을 경우 WM_CHAR 메시지를 만들어 메시지 큐에 덧붙이는 역할을 한다
+            // 물론 문자 입력이 아닐 경우는 아무 일도 하지 않으며 이 메시지는 DispatchMessage 함수에 의해 WndProc으로 보내진다.
             TranslateMessage(&msg);
 
             // 시스템 메시지 큐에서 꺼낸 메시지를 프로그램의 메시지 처리 함수(WndProc)로 전달한다. 
@@ -191,7 +193,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    
+
+    static int x;
+    static int y;
+    static bool bDraw = false;
+    static char str[256];
+
+    int strLen;
+
     switch (message)
     {
     case WM_COMMAND:
@@ -212,6 +221,70 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
+    case WM_LBUTTONDOWN:
+
+        x = LOWORD(lParam);
+        y = HIWORD(lParam);
+        
+        bDraw = true;
+        break;
+
+    case WM_MOUSEMOVE:
+
+        // 컨트롤키랑 입력해야지 그려짐
+        if(bDraw == true && wParam & MK_CONTROL)
+        {
+            hdc = GetDC(hWnd);
+            MoveToEx(hdc, x, y, NULL);
+
+            x = LOWORD(lParam);
+            y = HIWORD(lParam);
+
+            LineTo(hdc, x, y);
+
+            ReleaseDC(hWnd, hdc);
+
+        }
+        break;
+
+    case WM_LBUTTONUP:
+
+        bDraw = false;
+
+        break;
+    case WM_CHAR:
+   
+
+        strLen = strlen(str);
+
+        str[strLen] = (char)wParam;
+
+        str[strLen + 1] = '\0';
+        
+        //==============================================================================================================
+        // 이 함수는 윈도우의 작업 영역을 무효화시켜 윈도우즈로 하여금 WM_PAINT 메시지를 해당 윈도우로 보내도록 한다.
+        // 1. 첫 번째 인수는 무효화 대상이되는 윈도우 핸들이다.
+        // 2. 두 번째 인수 lpRect는 무효화의 대상이 되는 사각 영역을 써 주되 이 값이 NULL이면 윈도우의 전 영역이 무효화된다.
+        // 3. 세 번째 인수 true일 경우 배경을 지우고 WM_FAINT를 호출할지 false일 경우 배경을 지우지 WM_FAINT를 호출할지를 정한다.
+        //==============================================================================================================
+        InvalidateRect(hWnd, NULL, false);
+
+        break;
+    /*case WM_LBUTTONDOWN:
+
+        MessageBeep(MB_OK);
+
+        if (MessageBox(hWnd, L"게임을 종료하시겠습니까?", L"찬찬 컴퍼니", MB_YESNO | MB_ICONQUESTION) == IDYES)
+        {
+            PostQuitMessage(0);
+        }
+        else
+        {
+            MessageBox(hWnd, L"병신 ㅋㅋ", L"찬찬 컴퍼니", MB_OK);
+        }
+
+        break;*/
+
     // WM_PAINT 메시지는 "너의 작업 영역이 일부 지워졌으니까 빨리 복구해"라는 뜻이다. T
     case WM_PAINT:
         {    
@@ -221,16 +294,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
             SetTextAlign(hdc, TA_CENTER);
-            MoveToEx(hdc,700, 70, nullptr);
-            LineTo(hdc, 600, 150);
+            //MoveToEx(hdc,700, 70, nullptr);
+            //LineTo(hdc, 600, 150);
 
-            MoveToEx(hdc, 700, 70, nullptr);
-            LineTo(hdc, 800, 150);
+            //MoveToEx(hdc, 700, 70, nullptr);
+            //LineTo(hdc, 800, 150);
 
-            // 원 그리기 
-            Ellipse(hdc, 680, 50, 720, 90);
+            //// 원 그리기 
+            //Ellipse(hdc, 680, 50, 720, 90);
 
-            TextOut(hdc, 700, 60, L"10", 2);
+            if (strlen(str) != 0) 
+            {
+                TextOutA(hdc, 700, 60, str, strlen(str));
+            }
+
+
+
 
             EndPaint(hWnd, &ps); 
         }
