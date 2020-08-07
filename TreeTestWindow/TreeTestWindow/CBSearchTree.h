@@ -300,23 +300,31 @@ private:
 		}
 		else if (pNode->mLeft != nullptr && pNode->mRight == nullptr)
 		{
-			if (pNode->mParentsNode->mLeft == pNode)
+			if (pNode->mParentsNode != nullptr)
 			{
-				// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-				pNode->mParentsNode->mLeft = pNode->mLeft;
+				if (pNode->mParentsNode->mLeft == pNode)
+				{
+					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
+					pNode->mParentsNode->mLeft = pNode->mLeft;
 
-				// 연결할 노드의 부모를 삭제할 노드 부모의 연결
-				pNode->mLeft->mParentsNode = pNode->mParentsNode;
+					// 연결할 노드의 부모를 삭제할 노드 부모의 연결
+					pNode->mLeft->mParentsNode = pNode->mParentsNode;
 
+				}
+				else
+				{
+					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
+					pNode->mParentsNode->mRight = pNode->mLeft;
+
+					// 연결할 노드의 부모를 삭제할 노드 부모의 연결
+					pNode->mLeft->mParentsNode = pNode->mParentsNode;
+
+				}
 			}
 			else
 			{
-				// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-				pNode->mParentsNode->mRight = pNode->mLeft;
-
-				// 연결할 노드의 부모를 삭제할 노드 부모의 연결
-				pNode->mLeft->mParentsNode = pNode->mParentsNode;
-
+				pNode->mLeft->mParentsNode = nullptr;
+				this->mRoot = pNode->mLeft;
 			}
 
 			this->mNodeCount -= 1;
@@ -379,21 +387,18 @@ private:
 				{
 					if (pNode->mRight == nullptr)
 					{
-						if (pNode->mParentsNode->mLeft == pNode)
-						{
-							// 부모 노드 자식 노드 끊기
-							pNode->mParentsNode->mLeft = nullptr;
 
-							// 삭제된 데이터 자리에 왼쪽에서 가장 오른쪽 노드 추가
-							pNode->mParentsNode->mData = pNode->mData;
+						if (pNode->mLeft != nullptr)
+						{
+							pNode->mParentsNode->mRight = pNode->mLeft;
+							pNode->mLeft->mParentsNode = pNode->mParentsNode;
 						}
 						else
 						{
 							pNode->mParentsNode->mRight = nullptr;
-
-							deleteNodeData->mData = pNode->mData;
 						}
-
+						
+						deleteNodeData->mData = pNode->mData;
 
 						// 노드 수 1개 감소
 						this->mNodeCount -= 1;
