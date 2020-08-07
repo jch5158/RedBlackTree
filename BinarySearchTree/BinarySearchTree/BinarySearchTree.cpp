@@ -19,6 +19,14 @@ int main()
 
 	searchTree.InsertNode(2);
 
+	searchTree.InsertNode(11);
+
+	searchTree.InsertNode(12);
+
+	searchTree.InsertNode(9);
+
+	searchTree.InsertNode(10);
+
 	/*retval = searchTree.DeleteNode(5);
 	if (!retval)
 	{

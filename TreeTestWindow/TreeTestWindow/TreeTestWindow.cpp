@@ -3,6 +3,7 @@
 
 #include "framework.h"
 #include "stdafx.h"
+#include "CBSearchTree.h"
 #include "TreeTestWindow.h"
 
 #define MAX_LOADSTRING 100
@@ -22,6 +23,7 @@ RECT                rect;
 PAINTSTRUCT         ps;
 
 
+CBSearchTree searchTree;
 
 
 
@@ -64,8 +66,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
 
-    // 기본 메시지 루프입니다:
 
+
+    
+   
+    // 기본 메시지 루프입니다:
     // GetMessage는 시스템이 유지하는 메시지 큐에서 메시지를 읽어들인다. 읽어들인 메시지는 첫번째 인수가 지정하는 MSG 구조체에 저장된다. 
     // 이 함수는 읽어들인 메시지가 프로그램을 종료하라는 WM_QUIT일 경우 False를 리턴하며 그 외의 메시지이면 True를 리턴한다.
     while (GetMessage(&msg, nullptr, 0, 0))
@@ -103,7 +108,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
     // 윈도우가 어떤 형태를 가질 것인가를 지정할 수 있다.
     // 윈도우의 수직, 수평이 바뀔 경우 윈도우를 다시 그린다는 뜻이다.
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    // CS_DBLCLKS 은 마우스의 더블 클릭을 지원하기 위함이다.
+    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
 
     // 윈도우 메시지 처리 함수를 지정한다.
     wcex.lpfnWndProc    = WndProc;
@@ -196,13 +202,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     static int x;
     static int y;
+    
+    
     static bool bDraw = false;
+    
+    static bool inputSelectFlag = false;
+    static bool deleteSelectFlag = false;
+
+
+    static bool numValueFlag = false;
+
     static char str[256];
+    static char inputStr[256];
+
+    static HBRUSH oldBrush, redBrush, blackBrush;
 
     int strLen;
 
     switch (message)
     {
+    case WM_CREATE:
+
+        // 가제로 메시지를 발생시키는 함수입니다.
+        // 두 번째는 메시지 이름
+        // 세 번째, 네 번째는 wParam,lParam입니다.
+        //SendMessage(hWnd, WM_LBUTTONDOWN, 30, 50);
+
+        redBrush = CreateSolidBrush(RGB(255, 0, 0));
+
+        blackBrush = CreateSolidBrush(RGB(0, 0, 0));
+
+
+        break;
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -225,11 +256,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         x = LOWORD(lParam);
         y = HIWORD(lParam);
-        
+       
         bDraw = true;
         break;
 
-    case WM_MOUSEMOVE:
+     // 더블 클릭에 대한 메시지이다.
+    //case WM_LBUTTONDBLCLK:
+
+    //    InvalidateRect(hWnd, nullptr, true);
+
+    //    break;
+
+     case WM_MOUSEMOVE:
 
         // 컨트롤키랑 입력해야지 그려짐
         if(bDraw == true && wParam & MK_CONTROL)
@@ -253,21 +291,71 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         break;
     case WM_CHAR:
-   
+  
+        if (numValueFlag == false) {
+ 
+            strLen = strlen(str);
 
-        strLen = strlen(str);
+            str[strLen] = (char)wParam;
 
-        str[strLen] = (char)wParam;
+            str[strLen + 1] = '\0';
 
-        str[strLen + 1] = '\0';
-        
+            if ((atoi(str) == 1))
+            {
+                inputSelectFlag = true;
+                deleteSelectFlag = false;
+                numValueFlag = true;
+                memset(str, '\0', strlen(str));
+            }
+            else if (atoi(str) == 2)
+            {
+                inputSelectFlag = false;
+                deleteSelectFlag = true;
+                numValueFlag = true;
+                memset(str, '\0', strlen(str));
+            }
+            else
+            {
+                memset(str, '\0', strlen(str));
+                inputSelectFlag = false;
+                deleteSelectFlag = false;
+            }
+        } 
+        else
+        {
+            strLen = strlen(inputStr);
+
+            inputStr[strLen] = (char)wParam;
+
+            inputStr[strLen + 1] = '\0';
+        }
+
+        if (wParam == VK_RETURN)
+        {
+            
+            if (inputSelectFlag == true)
+            {
+                searchTree.InsertNode(atoi(inputStr));
+            }
+            else if (deleteSelectFlag == true)
+            {
+                searchTree.DeleteNode(atoi(inputStr));
+            }
+
+            numValueFlag = false;
+            inputSelectFlag = false;
+            deleteSelectFlag = false;
+            
+            memset(inputStr, '\0', sizeof(inputStr));
+        }
+
         //==============================================================================================================
         // 이 함수는 윈도우의 작업 영역을 무효화시켜 윈도우즈로 하여금 WM_PAINT 메시지를 해당 윈도우로 보내도록 한다.
         // 1. 첫 번째 인수는 무효화 대상이되는 윈도우 핸들이다.
         // 2. 두 번째 인수 lpRect는 무효화의 대상이 되는 사각 영역을 써 주되 이 값이 NULL이면 윈도우의 전 영역이 무효화된다.
         // 3. 세 번째 인수 true일 경우 배경을 지우고 WM_FAINT를 호출할지 false일 경우 배경을 지우지 WM_FAINT를 호출할지를 정한다.
         //==============================================================================================================
-        InvalidateRect(hWnd, NULL, false);
+        InvalidateRect(hWnd, nullptr, true);
 
         break;
     /*case WM_LBUTTONDOWN:
@@ -291,30 +379,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // BeginPaint는 WM_PAINT 메시지내에서 그림 그리기 준비를 하는 좀 더 전문적인 함수이다.
             // BeginPaint 함수는 윈도우 핸들 외에도 페인트 정보 구조체를 인수로 요구하며 이 구조체는 그림 그리기에 필요한 정보를 담는다.
             hdc = BeginPaint(hWnd, &ps);
+ 
+            //oldBrush = (HBRUSH)SelectObject(hdc, redBrush);
+ 
+            //SelectObject(hdc,oldBrush);
 
+            searchTree.Inorder(hdc);
 
-            SetTextAlign(hdc, TA_CENTER);
-            //MoveToEx(hdc,700, 70, nullptr);
-            //LineTo(hdc, 600, 150);
+            char menu[] = "1. Input     2. delete";
+            TextOutA(hdc, 50, 700, menu, strlen(menu));
 
-            //MoveToEx(hdc, 700, 70, nullptr);
-            //LineTo(hdc, 800, 150);
-
-            //// 원 그리기 
-            //Ellipse(hdc, 680, 50, 720, 90);
-
-            if (strlen(str) != 0) 
+            if (inputSelectFlag)
             {
-                TextOutA(hdc, 700, 60, str, strlen(str));
+                WCHAR menuValue[] = L"입력 : ";
+                TextOut(hdc, 50, 730, menuValue, wcslen(menuValue));
+            }
+            else if (deleteSelectFlag)
+            {
+                WCHAR menuValue[] = L"삭제 값 입력 : ";
+                TextOut(hdc, 50, 730, menuValue, wcslen(menuValue));
             }
 
-
-
+            if (numValueFlag)
+            {
+                TextOutA(hdc, 200, 730, inputStr, strlen(inputStr));
+            }
 
             EndPaint(hWnd, &ps); 
         }
         break;
     case WM_DESTROY:
+
+        DeleteObject(redBrush);
+
+        DeleteObject(blackBrush);
+
         // PostQuitMessage 함수를 호출하여 WM_QUIT 메시지를 보낸다. WM_QUIT 메시지가 입력되면 
         // 메시지 루프의 GetMessage 함수 리턴값이 False가 되어 프로그램이 종료된다.
         PostQuitMessage(0);
@@ -326,6 +425,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
+
 
 // 정보 대화 상자의 메시지 처리기입니다.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

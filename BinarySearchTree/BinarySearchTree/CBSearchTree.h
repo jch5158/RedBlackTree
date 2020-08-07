@@ -6,7 +6,7 @@ public:
 	{
 		StructNode* mParentsNode;
 		StructNode* mLeft;
-		StructNode* mRight;
+		StructNode* mRight;	
 		int mData;
 	};
 
@@ -30,15 +30,15 @@ public:
 	bool InsertNode(int data)
 	{
 		StructNode* newNode = (StructNode*)malloc(sizeof(StructNode));
-		newNode->mLeft = nullptr;
+		newNode->mParentsNode = nullptr;
 		newNode->mLeft = nullptr;
 		newNode->mRight = nullptr;
-		newNode->mData = data;
+		newNode->mData = data;		
 
 		if (this->mRoot == nullptr)
 		{
 			this->mRoot = newNode;
-			this->mNodeCount += 1;
+			this->mNodeCount += 1;			
 			return true;
 		}
 		else
@@ -123,28 +123,33 @@ private:
 	//------------------------------------------------------
 	bool linkNode(StructNode* pParent, StructNode* pChild)
 	{
-
+		
 		while (1)
 		{
 			if (pParent->mData > pChild->mData)
 			{
 				if (pParent->mLeft == nullptr)
 				{
-					// 왼쪽 노드 연결
+					// 부모의 왼쪽 노드 연결
 					pParent->mLeft = pChild;
-					
+
 					// 부모 노드 연결
 					pChild->mParentsNode = pParent;
+					
+					
+
 					break;
 				}
 				else
 				{
+					
 					pParent = pParent->mLeft;
 					continue;
 				}
 			}
 			else if (pParent->mData < pChild->mData)
 			{
+				
 				if (pParent->mRight == nullptr)
 				{
 					// 오른쪽 노드 연결
@@ -152,10 +157,13 @@ private:
 		
 					// 부모 노드 연결
 					pChild->mParentsNode = pParent;
+				
+
 					break;
 				}
 				else
 				{
+
 					pParent = pParent->mRight;
 					continue;
 				}
@@ -328,16 +336,33 @@ private:
 	// 중위 순회 추력
 	void inoderPrintRecursive(StructNode* pNode)
 	{
-		
+		static int rootX = 800;
+		static int moveX = 800;
+
+
 		if (pNode == nullptr)
 		{
 			return;
 		}
 
+		int parentsX;
+
 		this->mDepth += 1;
-		inoderPrintRecursive(pNode->mLeft);	
-		printf_s("Depth : %d, Data : %d\n", this->mDepth,pNode->mData);		
+
+		moveX /= 2;
+		rootX = rootX - moveX;
+		inoderPrintRecursive(pNode->mLeft);		
+		rootX = rootX + moveX;
+		moveX *= 2;
+
+		printf_s("Depth : %d, Data : %d, X좌표 : %d\n" ,this->mDepth,pNode->mData,rootX);
+
+		moveX /= 2;
+		rootX = rootX + moveX;
 		inoderPrintRecursive(pNode->mRight);
+		rootX = rootX - moveX;
+		moveX *= 2;
+
 		this->mDepth -= 1;
 
 	}
