@@ -204,19 +204,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     static int y;
     
     
-    static bool bDraw = false;
-    
-    static bool inputSelectFlag = false;
-    static bool deleteSelectFlag = false;
+    // insert 메뉴를 선택했을 때
+    static bool insertFlag = false;
 
+    // delete menu를 선택했을 때
+    static bool deleteFlag = false;
 
-    static bool numValueFlag = false;
+    // 매뉴를 선택했을 때
+    static bool menuSelectFlag = true;
 
     static char str[256];
-    static char inputStr[256];
 
     static HBRUSH oldBrush, redBrush, blackBrush;
 
+    // 문자열의 길이를 얻기 위한 변수
     int strLen;
 
     switch (message)
@@ -231,7 +232,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         redBrush = CreateSolidBrush(RGB(255, 0, 0));
 
         blackBrush = CreateSolidBrush(RGB(0, 0, 0));
-
 
         break;
     case WM_COMMAND:
@@ -252,14 +252,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-    case WM_LBUTTONDOWN:
-
-        x = LOWORD(lParam);
-        y = HIWORD(lParam);
-       
-        bDraw = true;
-        break;
-
      // 더블 클릭에 대한 메시지이다.
     //case WM_LBUTTONDBLCLK:
 
@@ -267,32 +259,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
     //    break;
 
-     case WM_MOUSEMOVE:
 
-        // 컨트롤키랑 입력해야지 그려짐
-        if(bDraw == true && wParam & MK_CONTROL)
-        {
-            hdc = GetDC(hWnd);
-            MoveToEx(hdc, x, y, NULL);
-
-            x = LOWORD(lParam);
-            y = HIWORD(lParam);
-
-            LineTo(hdc, x, y);
-
-            ReleaseDC(hWnd, hdc);
-
-        }
-        break;
-
-    case WM_LBUTTONUP:
-
-        bDraw = false;
-
-        break;
     case WM_CHAR:
   
-        if (numValueFlag == false) {
+        if (menuSelectFlag == true) {
  
             strLen = strlen(str);
 
@@ -302,51 +272,63 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             if ((atoi(str) == 1))
             {
-                inputSelectFlag = true;
-                deleteSelectFlag = false;
-                numValueFlag = true;
+                insertFlag = true;
+                deleteFlag = false;
+                menuSelectFlag = false;
                 memset(str, '\0', strlen(str));
             }
             else if (atoi(str) == 2)
             {
-                inputSelectFlag = false;
-                deleteSelectFlag = true;
-                numValueFlag = true;
+                insertFlag = false;
+                deleteFlag = true;
+                menuSelectFlag = false;
                 memset(str, '\0', strlen(str));
+            }
+            else if (atoi(str) == 3)
+            {
+
+                menuSelectFlag = true;
+                insertFlag = false;
+                deleteFlag = false;
+
+                memset(str, '\0', sizeof(str));
+
+                searchTree.ReleaseTree();
             }
             else
             {
+                insertFlag = false;
+                deleteFlag = false;
+                menuSelectFlag = true;
                 memset(str, '\0', strlen(str));
-                inputSelectFlag = false;
-                deleteSelectFlag = false;
             }
         } 
         else
         {
-            strLen = strlen(inputStr);
+            strLen = strlen(str);
 
-            inputStr[strLen] = (char)wParam;
+            str[strLen] = (char)wParam;
 
-            inputStr[strLen + 1] = '\0';
+            str[strLen + 1] = '\0';
         }
 
         if (wParam == VK_RETURN)
         {
             
-            if (inputSelectFlag == true)
+            if (insertFlag == true)
             {
-                searchTree.InsertNode(atoi(inputStr));
+                searchTree.InsertNode(atoi(str));
             }
-            else if (deleteSelectFlag == true)
+            else if (deleteFlag == true)
             {
-                searchTree.DeleteNode(atoi(inputStr));
+                searchTree.DeleteNode(atoi(str));
             }
 
-            numValueFlag = false;
-            inputSelectFlag = false;
-            deleteSelectFlag = false;
+            menuSelectFlag = true;
+            insertFlag = false;
+            deleteFlag = false;
             
-            memset(inputStr, '\0', sizeof(inputStr));
+            memset(str, '\0', sizeof(str));
         }
 
         //==============================================================================================================
@@ -358,22 +340,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         InvalidateRect(hWnd, nullptr, true);
 
         break;
-    /*case WM_LBUTTONDOWN:
 
-        MessageBeep(MB_OK);
-
-        if (MessageBox(hWnd, L"게임을 종료하시겠습니까?", L"찬찬 컴퍼니", MB_YESNO | MB_ICONQUESTION) == IDYES)
-        {
-            PostQuitMessage(0);
-        }
-        else
-        {
-            MessageBox(hWnd, L"병신 ㅋㅋ", L"찬찬 컴퍼니", MB_OK);
-        }
-
-        break;*/
-
-    // WM_PAINT 메시지는 "너의 작업 영역이 일부 지워졌으니까 빨리 복구해"라는 뜻이다. T
+    // WM_PAINT 메시지는 "너의 작업 영역이 일부 지워졌으니까 빨리 복구해"라는 뜻이다. 
     case WM_PAINT:
         {    
             // BeginPaint는 WM_PAINT 메시지내에서 그림 그리기 준비를 하는 좀 더 전문적인 함수이다.
@@ -384,25 +352,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
  
             //SelectObject(hdc,oldBrush);
 
-            searchTree.Inorder(hdc);
+            searchTree.Print(hdc);
 
-            char menu[] = "1. Input     2. delete";
+            char menu[] = "1. Input     2. delete     3. All Delete";
             TextOutA(hdc, 50, 700, menu, strlen(menu));
 
-            if (inputSelectFlag)
+            if (insertFlag == true)
             {
                 WCHAR menuValue[] = L"입력 : ";
                 TextOut(hdc, 50, 730, menuValue, wcslen(menuValue));
             }
-            else if (deleteSelectFlag)
+            else if (deleteFlag == true)
             {
                 WCHAR menuValue[] = L"삭제 값 입력 : ";
                 TextOut(hdc, 50, 730, menuValue, wcslen(menuValue));
             }
 
-            if (numValueFlag)
+            if (menuSelectFlag == false)
             {
-                TextOutA(hdc, 200, 730, inputStr, strlen(inputStr));
+                TextOutA(hdc, 200, 730, str, strlen(str));
             }
 
             EndPaint(hWnd, &ps); 
