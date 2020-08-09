@@ -123,7 +123,6 @@ private:
 	//------------------------------------------------------
 	bool linkNode(StructNode* pParent, StructNode* pChild)
 	{
-		
 		while (1)
 		{
 			if (pParent->mData > pChild->mData)
@@ -135,45 +134,33 @@ private:
 
 					// 부모 노드 연결
 					pChild->mParentsNode = pParent;
-					
-					
 
 					break;
 				}
-				else
-				{
-					
-					pParent = pParent->mLeft;
-					continue;
-				}
+				pParent = pParent->mLeft;
+				continue;
 			}
 			else if (pParent->mData < pChild->mData)
 			{
-				
+
 				if (pParent->mRight == nullptr)
 				{
 					// 오른쪽 노드 연결
 					pParent->mRight = pChild;
-		
+
 					// 부모 노드 연결
 					pChild->mParentsNode = pParent;
-				
 
 					break;
 				}
-				else
-				{
+				pParent = pParent->mRight;
+				continue;
+			}
 
-					pParent = pParent->mRight;
-					continue;
-				}
-			}
-			else
-			{
-				free(pChild);
-				return false;
-			}
+			free(pChild);
+			return false;
 		}
+
 		this->mNodeCount += 1;
 		return true;
 	}
@@ -202,7 +189,7 @@ private:
 				pNode = pNode->mLeft;
 				continue;
 			}
-			else if(pNode->mData < data)
+			else if (pNode->mData < data)
 			{
 				if (pNode->mRight == nullptr)
 				{
@@ -212,106 +199,179 @@ private:
 				pNode = pNode->mRight;
 				continue;
 			}
-			else if (pNode->mData == data)
-			{
-				return pNode;
-			}
+
+			// 찾을 노드를 return 한다.
+			return pNode;
 		}
 	}
+
 
 	//------------------------------------------------------
 	// DeleteNode 내부에서 호출되는 노드찾기 & 삭제 & 후처리 재귀함수
 	//------------------------------------------------------
 	void deleteNode(StructNode* pNode)
 	{
-		if (pNode->mLeft == nullptr && pNode->mRight == nullptr)
-		{		
-			// 노드 수 1개 감소
-			this->mNodeCount -= 1;			
 
-			// 부모의 왼쪽 노드인지 오른쪽 노드인지 확인 후 노드 자르기
-			if (pNode->mParentsNode->mLeft == pNode)
+		// 삭제할 노드의 왼쪽, 오른쪽 자식 노드가 없을 경우 
+		if (pNode->mLeft == nullptr && pNode->mRight == nullptr)
+		{
+			// 부모의 왼쪽 노드인지 오른쪽 노드인지 확인 후 노드 자르기 
+			// 또는 부모가 없다면 루트 노드이다.
+			if (pNode->mParentsNode != nullptr)
 			{
-				pNode->mParentsNode->mLeft = nullptr;
+				if (pNode->mParentsNode->mLeft == pNode)
+				{
+					pNode->mParentsNode->mLeft = nullptr;
+				}
+				else
+				{
+					pNode->mParentsNode->mRight = nullptr;
+				}
 			}
 			else
 			{
-				pNode->mParentsNode->mRight = nullptr;
+				this->mRoot = nullptr;
 			}
 
 			// 해당 노드를 free 시킨다. 
 			free(pNode);
-			
+
 			return;
 		}
+		// 삭제할 노드의 오른쪽 자식 노드가 있을 경우
 		else if (pNode->mLeft == nullptr && pNode->mRight != nullptr)
 		{
-	
-			// 삭제할 노드는 부모 노드의 왼쪽인지 오른쪽인지
-			if (pNode->mParentsNode->mLeft == pNode)
+			if (pNode->mParentsNode != nullptr)
 			{
-				// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-				pNode->mParentsNode->mLeft = pNode->mRight;
+				// 삭제할 노드는 부모 노드의 왼쪽인지 오른쪽인지
+				if (pNode->mParentsNode->mLeft == pNode)
+				{
+					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
+					pNode->mParentsNode->mLeft = pNode->mRight;
+				}
+				else
+				{
+					pNode->mParentsNode->mRight = pNode->mRight;
+				}
 
-				// 연결할 노드의 부모를 삭제할 노드 부모의 연결
+				// 삭제할 노드의 오른쪽의 부모를 삭제할 노드의 부모로 연결해준다.
 				pNode->mRight->mParentsNode = pNode->mParentsNode;
-			
-				this->mNodeCount -= 1;
-			
-				free(pNode);
 			}
 			else
 			{
-
-				pNode->mParentsNode->mRight = pNode->mRight;
-
-				pNode->mRight->mParentsNode = pNode->mParentsNode;
-	
-				this->mNodeCount -= 1;
-			
-				free(pNode);
+				// 자식노드가 부모 노드를 끊어준다.
+				pNode->mRight->mParentsNode = nullptr;
+				this->mRoot = pNode->mRight;
 			}
+
+			free(pNode);
+
+			return;
+		}
+		// 삭제할 노드의 왼쪽에 자식이 있을 경우
+		else if (pNode->mLeft != nullptr && pNode->mRight == nullptr)
+		{
+			if (pNode->mParentsNode != nullptr)
+			{
+				if (pNode->mParentsNode->mLeft == pNode)
+				{
+					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
+					pNode->mParentsNode->mLeft = pNode->mLeft;
+				}
+				else
+				{
+					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
+					pNode->mParentsNode->mRight = pNode->mLeft;
+				}
+
+				// 연결할 노드의 부모를 삭제할 노드 부모의 연결
+				pNode->mLeft->mParentsNode = pNode->mParentsNode;
+			}
+			else
+			{
+				pNode->mLeft->mParentsNode = nullptr;
+				this->mRoot = pNode->mLeft;
+			}
+
+			free(pNode);
+
+			return;
 		}
 		else
 		{
+			// 삭제할 노드의 포인터를 저장해둔다.
 			StructNode* deleteNodeData = pNode;
+
+			// 삭제할 노드의 왼쪽 노드를 얻는다.
 			pNode = pNode->mLeft;
 
-			while (1)
+			// 왼쪽 자식 노드의 오른쪽 자식 노드가 없을 경우
+			if (pNode->mRight == nullptr)
 			{
-				if (pNode->mRight == nullptr)
+				// 삭제할 노드로 다시 포인터를 옮긴다.
+				pNode = pNode->mParentsNode;
+
+				// 부모 노드가 있을 경우
+				if (pNode->mParentsNode != nullptr)
 				{
+					// 부모 노드의 왼쪽 자식인지 오른쪽 자식인지 확인한다.
 					if (pNode->mParentsNode->mLeft == pNode)
 					{
-						// 부모 노드 자식 노드 끊기
-						pNode->mParentsNode->mLeft = nullptr;
-
-						// 삭제된 데이터 자리에 왼쪽에서 가장 오른쪽 노드 추가
-						pNode->mParentsNode->mData = pNode->mData;
+						pNode->mParentsNode->mLeft = pNode->mLeft;
 					}
 					else
 					{
-						pNode->mParentsNode->mRight = nullptr;
-
-						deleteNodeData->mData = pNode->mData;
+						pNode->mParentsNode->mRight = pNode->mLeft;
 					}
 
-
-					// 노드 수 1개 감소
-					this->mNodeCount -= 1;
-
-					// 해당 노드를 free 시킨다. 
-					free(pNode);
-
-					return;
+					pNode->mLeft->mParentsNode = pNode->mParentsNode;
+				}
+				else
+				{
+					this->mRoot = pNode->mLeft;
+					pNode->mLeft->mParentsNode = nullptr;
 				}
 
-				pNode = pNode->mRight;
-			}
+				pNode->mLeft->mRight = pNode->mRight;
+				pNode->mRight->mParentsNode = pNode->mLeft;
 
+				// 해당 노드를 free 시킨다. 
+				free(pNode);
+
+				return;
+			}
+			else
+			{
+				while (1)
+				{
+					if (pNode->mRight == nullptr)
+					{
+						if (pNode->mLeft != nullptr)
+						{
+							pNode->mParentsNode->mRight = pNode->mLeft;
+							pNode->mLeft->mParentsNode = pNode->mParentsNode;
+						}
+						else
+						{
+							pNode->mParentsNode->mRight = nullptr;
+						}
+
+						deleteNodeData->mData = pNode->mData;
+
+						// 해당 노드를 free 시킨다. 
+						free(pNode);
+
+						return;
+					}
+
+					pNode = pNode->mRight;
+				}
+			}
 		}
 
+
 	}
+
 
 
 	//------------------------------------------------------

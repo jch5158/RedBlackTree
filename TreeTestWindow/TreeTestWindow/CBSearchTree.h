@@ -7,11 +7,18 @@ class CBSearchTree
 {
 private:
 
+	enum class NODE_COLOR
+	{
+		BLACK = 0,
+		RED
+	};
+
 	struct StructNode
 	{
 		StructNode* mParentsNode;
 		StructNode* mLeft;
 		StructNode* mRight;
+		NODE_COLOR mColor;
 		int mData;
 	};
 
@@ -44,6 +51,7 @@ public:
 		{
 			this->mRoot = newNode;
 			this->mNodeCount += 1;
+			newNode->mColor = NODE_COLOR::BLACK;
 			return true;
 		}
 		else
@@ -127,6 +135,91 @@ public:
 		else
 		{
 		}
+	}
+
+
+	void RotateRight(StructNode *pivotNode)
+	{
+		if (pivotNode->mLeft == nullptr)
+		{
+			return;
+		}
+
+		StructNode* leftNode = pivotNode->mLeft;
+
+		StructNode* topNode = pivotNode->mParentsNode;
+
+		if (leftNode->mRight != nullptr)
+		{
+			leftNode->mRight->mParentsNode = pivotNode;
+		}
+
+		pivotNode->mLeft = leftNode->mRight;
+
+		pivotNode->mParentsNode = leftNode;
+
+		leftNode->mRight = pivotNode;
+
+		leftNode->mParentsNode = topNode;
+
+		if (topNode != nullptr)
+		{
+			if (topNode->mLeft == pivotNode)
+			{
+				topNode->mLeft = leftNode;
+			}
+			else
+			{
+				topNode->mRight = leftNode;
+			}
+		}
+		else 
+		{
+			this->mRoot = leftNode;
+		}
+	}
+
+
+	void RotateLeft(StructNode* pivotNode)
+	{
+		if (pivotNode->mRight == nullptr)
+		{
+			return;
+		}
+
+		StructNode* rightNode = pivotNode->mRight;
+
+		StructNode* topNode = pivotNode->mParentsNode;
+
+		if (rightNode->mLeft != nullptr)
+		{
+			rightNode->mLeft->mParentsNode = pivotNode;
+		
+		}
+
+		pivotNode->mRight = rightNode->mLeft;
+
+		pivotNode->mParentsNode = rightNode;
+
+		rightNode->mLeft = pivotNode;
+
+		rightNode->mParentsNode = topNode;
+
+		if (topNode != nullptr) {
+			if (topNode->mLeft == pivotNode)
+			{
+				topNode->mLeft = rightNode;
+			}
+			else
+			{
+				topNode->mRight = rightNode;
+			}
+		}
+		else
+		{
+			this->mRoot = rightNode;
+		}
+
 	}
 
 private:
@@ -472,7 +565,7 @@ private:
 
 
 
-private:
+public:
 	int mDepth;
 
 	StructNode* mRoot;

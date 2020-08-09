@@ -252,14 +252,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
 
-     // 더블 클릭에 대한 메시지이다.
-    //case WM_LBUTTONDBLCLK:
+    // 더블 클릭에 대한 메시지이다.
+    case WM_LBUTTONDBLCLK:
 
-    //    InvalidateRect(hWnd, nullptr, true);
+    
+        searchTree.RotateRight(searchTree.mRoot);
+        
+        InvalidateRect(hWnd, nullptr, true);
 
-    //    break;
+        break;
+
+    case WM_RBUTTONDBLCLK:
 
 
+
+        searchTree.RotateLeft(searchTree.mRoot);
+
+        InvalidateRect(hWnd, nullptr, true);
+
+        break;
     case WM_CHAR:
   
         if (menuSelectFlag == true) {
