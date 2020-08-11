@@ -256,7 +256,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_LBUTTONDBLCLK:
 
     
-        searchTree.RotateRight(searchTree.mRoot);
+        //searchTree.rotateRight(searchTree.mRoot);
         
         InvalidateRect(hWnd, nullptr, true);
 
@@ -266,7 +266,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-        searchTree.RotateLeft(searchTree.mRoot);
+        //searchTree.rotateLeft(searchTree.mRoot);
 
         InvalidateRect(hWnd, nullptr, true);
 
@@ -363,7 +363,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
  
             //SelectObject(hdc,oldBrush);
 
-            searchTree.Print(hdc);
+
+            searchTree.Print(hdc, &redBrush, &blackBrush);
 
             char menu[] = "1. Input     2. delete     3. All Delete";
             TextOutA(hdc, 50, 700, menu, strlen(menu));

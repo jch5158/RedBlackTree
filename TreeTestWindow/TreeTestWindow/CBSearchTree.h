@@ -29,12 +29,20 @@ public:
 		this->mDepth = -1;
 		this->mRoot = nullptr;
 		this->mNodeCount = 0;
+		this->mNil = (StructNode*)malloc(sizeof(StructNode));
+		this->mNil->mColor = NODE_COLOR::BLACK;
+		this->mNil->mLeft = nullptr;
+		this->mNil->mRight = nullptr;
+		this->mNil->mParentsNode = nullptr;
 	}
 
 	~CBSearchTree()
 	{
 		ReleaseTree();
+		free(this->mNil);
+		this->mNil = nullptr;	
 	}
+
 
 	//------------------------------------------------------
 	// 새로운 데이터를 추가한다.
@@ -45,13 +53,16 @@ public:
 		newNode->mRight = nullptr;
 		newNode->mLeft = nullptr;
 		newNode->mParentsNode = nullptr;
+		newNode->mColor = NODE_COLOR::RED;
 		newNode->mData = data;
+		newNode->mLeft = this->mNil;
+		newNode->mRight = this->mNil;
 
 		if (this->mRoot == nullptr)
 		{
 			this->mRoot = newNode;
+			insertCase1Recursive(this->mRoot);
 			this->mNodeCount += 1;
-			newNode->mColor = NODE_COLOR::BLACK;
 			return true;
 		}
 		else
@@ -112,7 +123,7 @@ public:
 	//------------------------------------------------------
 	// 출력
 	//------------------------------------------------------
-	void Print(HDC hdc)
+	void Print(HDC hdc,HBRUSH *redBrush,HBRUSH *blackBrush)
 	{
 		if (this->mRoot == nullptr)
 		{
@@ -120,7 +131,7 @@ public:
 		}
 		else
 		{
-			postorderPrintRecursive(this->mRoot, hdc);
+			postorderPrintRecursive(this->mRoot, hdc, redBrush, blackBrush);
 		}
 	}
 
@@ -138,89 +149,6 @@ public:
 	}
 
 
-	void RotateRight(StructNode *pivotNode)
-	{
-		if (pivotNode->mLeft == nullptr)
-		{
-			return;
-		}
-
-		StructNode* leftNode = pivotNode->mLeft;
-
-		StructNode* topNode = pivotNode->mParentsNode;
-
-		if (leftNode->mRight != nullptr)
-		{
-			leftNode->mRight->mParentsNode = pivotNode;
-		}
-
-		pivotNode->mLeft = leftNode->mRight;
-
-		pivotNode->mParentsNode = leftNode;
-
-		leftNode->mRight = pivotNode;
-
-		leftNode->mParentsNode = topNode;
-
-		if (topNode != nullptr)
-		{
-			if (topNode->mLeft == pivotNode)
-			{
-				topNode->mLeft = leftNode;
-			}
-			else
-			{
-				topNode->mRight = leftNode;
-			}
-		}
-		else 
-		{
-			this->mRoot = leftNode;
-		}
-	}
-
-
-	void RotateLeft(StructNode* pivotNode)
-	{
-		if (pivotNode->mRight == nullptr)
-		{
-			return;
-		}
-
-		StructNode* rightNode = pivotNode->mRight;
-
-		StructNode* topNode = pivotNode->mParentsNode;
-
-		if (rightNode->mLeft != nullptr)
-		{
-			rightNode->mLeft->mParentsNode = pivotNode;
-		
-		}
-
-		pivotNode->mRight = rightNode->mLeft;
-
-		pivotNode->mParentsNode = rightNode;
-
-		rightNode->mLeft = pivotNode;
-
-		rightNode->mParentsNode = topNode;
-
-		if (topNode != nullptr) {
-			if (topNode->mLeft == pivotNode)
-			{
-				topNode->mLeft = rightNode;
-			}
-			else
-			{
-				topNode->mRight = rightNode;
-			}
-		}
-		else
-		{
-			this->mRoot = rightNode;
-		}
-
-	}
 
 private:
 
@@ -233,7 +161,7 @@ private:
 		{
 			if (pParent->mData > pChild->mData)
 			{
-				if (pParent->mLeft == nullptr)
+				if (pParent->mLeft == this->mNil)
 				{
 					// 부모의 왼쪽 노드 연결
 					pParent->mLeft = pChild;
@@ -247,9 +175,8 @@ private:
 				continue;
 			}
 			else if (pParent->mData < pChild->mData)
-			{
-				
-				if (pParent->mRight == nullptr)
+			{	
+				if (pParent->mRight == this->mNil)
 				{
 					// 오른쪽 노드 연결
 					pParent->mRight = pChild;
@@ -267,10 +194,10 @@ private:
 			return false;		
 		}
 
+		insertCase1Recursive(pChild);
 		this->mNodeCount += 1;
 		return true;
 	}
-
 
 
 	//------------------------------------------------------
@@ -311,179 +238,251 @@ private:
 		}
 	}
 
+
+
 	//------------------------------------------------------
 	// DeleteNode 내부에서 호출되는 노드찾기 & 삭제 & 후처리
 	//------------------------------------------------------
 	void deleteNode(StructNode* pNode)
 	{
+		// 삭제할 노드의 포인터를 저장해둔다.
+		StructNode* deleteNodeData = pNode;
 
-		// 삭제할 노드의 왼쪽, 오른쪽 자식 노드가 없을 경우 
-		if (pNode->mLeft == nullptr && pNode->mRight == nullptr)
+		// 삭제할 노드의 왼쪽 노드를 얻는다.
+		if (pNode->mLeft != this->mNil)
 		{
-			// 부모의 왼쪽 노드인지 오른쪽 노드인지 확인 후 노드 자르기 
-			// 또는 부모가 없다면 루트 노드이다.
-			if (pNode->mParentsNode != nullptr)
-			{
-				if (pNode->mParentsNode->mLeft == pNode)
-				{
-					pNode->mParentsNode->mLeft = nullptr;
-				}
-				else
-				{
-					pNode->mParentsNode->mRight = nullptr;
-				}
-			}
-			else
-			{
-				this->mRoot = nullptr;
-			}	
-
-			// 해당 노드를 free 시킨다. 
-			free(pNode);
-	
-			return;
-		}
-		// 삭제할 노드의 오른쪽 자식 노드가 있을 경우
-		else if (pNode->mLeft == nullptr && pNode->mRight != nullptr)
-		{
-			if (pNode->mParentsNode != nullptr)
-			{
-				// 삭제할 노드는 부모 노드의 왼쪽인지 오른쪽인지
-				if (pNode->mParentsNode->mLeft == pNode)
-				{
-					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-					pNode->mParentsNode->mLeft = pNode->mRight;
-				}
-				else
-				{
-					pNode->mParentsNode->mRight = pNode->mRight;
-				}
-
-				// 삭제할 노드의 오른쪽의 부모를 삭제할 노드의 부모로 연결해준다.
-				pNode->mRight->mParentsNode = pNode->mParentsNode;	
-			}
-			else
-			{
-				// 자식노드가 부모 노드를 끊어준다.
-				pNode->mRight->mParentsNode = nullptr;
-				this->mRoot = pNode->mRight;
-			}
-			
-			free(pNode);
-
-			return;
-		}
-		// 삭제할 노드의 왼쪽에 자식이 있을 경우
-		else if (pNode->mLeft != nullptr && pNode->mRight == nullptr)
-		{
-			if (pNode->mParentsNode != nullptr)
-			{
-				if (pNode->mParentsNode->mLeft == pNode)
-				{
-					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-					pNode->mParentsNode->mLeft = pNode->mLeft;
-				}
-				else
-				{
-					// 부모의 왼쪽과 삭제할 노드의 오른쪽 연결
-					pNode->mParentsNode->mRight = pNode->mLeft;
-				}
-
-				// 연결할 노드의 부모를 삭제할 노드 부모의 연결
-				pNode->mLeft->mParentsNode = pNode->mParentsNode;
-			}
-			else
-			{
-				pNode->mLeft->mParentsNode = nullptr;
-				this->mRoot = pNode->mLeft;
-			}
-			
-			free(pNode);
-
-			return;
-		}
-		else
-		{
-			// 삭제할 노드의 포인터를 저장해둔다.
-			StructNode* deleteNodeData = pNode;
-			
-			// 삭제할 노드의 왼쪽 노드를 얻는다.
 			pNode = pNode->mLeft;
+		}
 
-			// 왼쪽 자식 노드의 오른쪽 자식 노드가 없을 경우
-			if (pNode->mRight == nullptr)
+		while (1)
+		{
+			if (pNode->mRight == this->mNil)
 			{
-				// 삭제할 노드로 다시 포인터를 옮긴다.
-				pNode = pNode->mParentsNode;
+				deleteNodeData->mData = pNode->mData;
 
-				// 부모 노드가 있을 경우
-				if (pNode->mParentsNode != nullptr) 
-				{
-					// 부모 노드의 왼쪽 자식인지 오른쪽 자식인지 확인한다.
-					if (pNode->mParentsNode->mLeft == pNode)
-					{
-						pNode->mParentsNode->mLeft = pNode->mLeft;						
-					}
-					else
-					{
-						pNode->mParentsNode->mRight = pNode->mLeft;						
-					}					
-					
-					pNode->mLeft->mParentsNode = pNode->mParentsNode;
-				}
-				else
-				{
-					this->mRoot = pNode->mLeft;
-					pNode->mLeft->mParentsNode = nullptr;
-				}
-
-				pNode->mLeft->mRight = pNode->mRight;
-				pNode->mRight->mParentsNode = pNode->mLeft;
-
-				// 해당 노드를 free 시킨다. 
-				free(pNode);
+				deleteOneChild(pNode);
 
 				return;
 			}
-			else
+
+			pNode = pNode->mRight;
+		}
+	}
+
+	//===============================================================
+	// 삼촌 노드를 return 하는 함수이다.
+	//===============================================================
+	StructNode* getSibling(StructNode* node)
+	{
+		// 나의 부모 노드를 가리키는 부모 노드의 어느쪽 자식인지 확인 후
+		// 나의 부모노드가 할아버지 노드의 왼쪽 자식일 경우 반대편 자식이
+		// 삼촌 노드이다.
+		if (node == node->mParentsNode->mLeft)
+		{
+			return node->mParentsNode->mRight;
+		}
+		else
+		{
+			return node->mParentsNode->mLeft;
+		}
+	}
+
+	//===============================================================
+	// 해당 노드가 nil 인지 확인 후 true를 return 합니다.
+	//===============================================================
+	bool isNil(StructNode* node)
+	{
+		return (this->mNil == node);
+	}
+
+	//===============================================================
+	// 삭제할 노드의 할아버지 노드와 삭제할 노드의 자식 노드를 이어준다.
+	//===============================================================
+	void replaceNode(StructNode* node, StructNode* child)
+	{
+		child->mParentsNode = node->mParentsNode;
+
+		if (node->mParentsNode->mLeft == node)
+		{
+			node->mParentsNode->mLeft = child;
+		}
+		else if (node->mParentsNode->mRight == node)
+		{
+			node->mParentsNode->mRight = child;
+		}
+	}
+
+
+	void deleteOneChild(StructNode* node)
+	{
+		StructNode* child;
+
+
+		// 리프 노드의 반대편 노드를 child 노드로 지정한다.
+		if (isNil(node->mRight))
+		{
+			child = node->mLeft;
+		}
+		else
+		{
+			child = node->mRight;
+		}
+
+		if (this->mRoot == node && child == this->mNil)
+		{
+			this->mRoot = nullptr;
+		}
+		else
+		{
+			replaceNode(node, child);
+
+			// 삭제할 노드가 레드라면은 추가 작업이 필요없다.
+			if (node->mColor == NODE_COLOR::BLACK)
 			{
-				while (1)
+				// 만약 자식 노드가 레드였다며 추가 작업이 필요없음
+				// 바로 return
+				if (child->mColor == NODE_COLOR::RED)
 				{
-					if (pNode->mRight == nullptr)
-					{
-						if (pNode->mLeft != nullptr)
-						{
-							pNode->mParentsNode->mRight = pNode->mLeft;
-							pNode->mLeft->mParentsNode = pNode->mParentsNode;
-						}
-						else
-						{
-							pNode->mParentsNode->mRight = nullptr;
-						}
-						
-						deleteNodeData->mData = pNode->mData;
-
-						// 해당 노드를 free 시킨다. 
-						free(pNode);
-
-						return;
-					}
-
-					pNode = pNode->mRight;
+					child->mColor = NODE_COLOR::BLACK;
+				}
+				else
+				{
+					deleteCase1(child);
 				}
 			}
 		}
+		free(node);
+	}
+
+	void deleteCase1(StructNode* node)
+	{
+		// 부모 노드가 없을 경우는 루트 노드를 삭제하고 자식 노드를 이번 함수 인자로 전달 받았을 경우이다.
+		if (node->mParentsNode != nullptr)
+		{
+			deleteCase2(node);
+		}
+	}
+
+	void deleteCase2(StructNode* node)
+	{
+		StructNode* siblingNode = getSibling(node);
+
+		if (siblingNode->mColor == NODE_COLOR::RED)
+		{
+			node->mParentsNode->mColor = NODE_COLOR::RED;
+			siblingNode->mColor = NODE_COLOR::BLACK;
+			
+			if (node == node->mParentsNode->mLeft)
+			{
+				rotateLeft(node->mParentsNode);
+			}
+			else
+			{
+				rotateRight(node->mParentsNode);
+			}
+		}
+		deleteCase3(node);
+	}
 
 
+	void deleteCase3(StructNode* node)
+	{
+		StructNode* siblingNode = getSibling(node);
+
+
+		if (node->mParentsNode->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mLeft->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mRight->mColor == NODE_COLOR::BLACK)
+		{
+			siblingNode->mColor = NODE_COLOR::RED;
+			deleteCase1(node->mParentsNode);
+		}	
+		else
+		{
+			deleteCase4(node);
+		}
+	}
+
+	void deleteCase4(StructNode* node)
+	{
+		StructNode* siblingNode = getSibling(node);
+
+
+		if (node->mParentsNode->mColor == NODE_COLOR::RED &&
+			siblingNode->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mLeft->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mRight->mColor == NODE_COLOR::BLACK)
+		{
+			siblingNode->mColor = NODE_COLOR::RED;
+			node->mParentsNode->mColor = NODE_COLOR::BLACK;
+		}	
+		else
+		{
+			deleteCase5(node);
+		}
+		
+	}
+
+	void deleteCase5(StructNode* node)
+	{
+		StructNode* siblingNode = getSibling(node);
+		
+		if (siblingNode->mColor == NODE_COLOR::BLACK)
+		{
+
+			if (
+			node == node->mParentsNode->mLeft &&
+			siblingNode->mRight->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mLeft->mColor == NODE_COLOR::RED)
+			{
+				siblingNode->mColor = NODE_COLOR::RED;
+				siblingNode->mLeft->mColor = NODE_COLOR::BLACK;
+				rotateRight(siblingNode);
+			}
+			else if(
+			node == node->mParentsNode->mRight &&
+			siblingNode->mLeft->mColor == NODE_COLOR::BLACK && 
+			siblingNode->mRight->mColor == NODE_COLOR::RED)
+			{
+				siblingNode->mColor = NODE_COLOR::RED;
+				siblingNode->mRight->mColor = NODE_COLOR::BLACK;
+				rotateLeft(siblingNode);
+			}
+
+		}
+
+		deleteCase6(node);
+	}
+
+
+	void deleteCase6(StructNode* node)
+	{
+		StructNode* siblingNode = getSibling(node);
+
+		
+		siblingNode->mColor = node->mParentsNode->mColor;
+		node->mParentsNode->mColor = NODE_COLOR::BLACK;
+
+		if (node == node->mParentsNode->mLeft)
+		{
+			siblingNode->mRight->mColor = NODE_COLOR::BLACK;
+			rotateLeft(node->mParentsNode);
+		}
+		else 
+		{
+			siblingNode->mLeft->mColor = NODE_COLOR::BLACK;
+			rotateRight(node->mParentsNode);
+		}
 	}
 
 
 	//------------------------------------------------------
-	// 후위순회 삭제 재귀함수
+	// 후위순회 트리 삭제 재귀함수
 	//------------------------------------------------------
 	void postorderReleaseTreeRecursive(StructNode** pNode)
 	{
-		if (*pNode == nullptr)
+		if (*pNode == this->mNil)
 		{
 			return;
 		}
@@ -497,13 +496,269 @@ private:
 	}
 
 
-	// 후위 순회 추력
-	void postorderPrintRecursive(StructNode* pNode, HDC hdc)
+	//=======================================================
+	//인자로 전달된 노드를 기준으로 할아버지 노드를 return 한다.
+	//=======================================================
+	StructNode* getGrandparent(StructNode* node)
 	{
+		if (node != nullptr && node->mParentsNode != nullptr)
+		{
+			return node->mParentsNode->mParentsNode;
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
+
+
+	//==================================================================
+	//인자로 전달된 노드의 부모 반대편 노드 즉,삼촌 노드를 구하는 함수이니다.
+	//==================================================================
+	StructNode* getUncle(StructNode* node)
+	{
+		StructNode* grandparentNode = getGrandparent(node);
+
+		if (grandparentNode == nullptr)
+		{
+			return nullptr;
+		}
+
+		if (grandparentNode->mLeft == node->mParentsNode)
+		{
+			return grandparentNode->mRight;
+		}
+		else 
+		{
+			return grandparentNode->mLeft;
+		}
+	}
+
+	// ==========================================================================
+	// 루트 노드가 이제 등록되는 case일 경우 아직 없을 경우 case1에서 색상을 지정한다.
+	//===========================================================================
+	void insertCase1Recursive(StructNode *node)
+	{
+		// 첫 번째, (루트 노드) 노드는 무조건 블랙이다. 즉, 부모 노드가 없다.
+		if (node->mParentsNode == nullptr)
+		{
+			node->mColor = NODE_COLOR::BLACK;
+		}
+		else
+		{
+			insertCase2Recursive(node);
+		}
+	}
+
+	//========================================================================
+	//부모 노드가 블랙일 경우 새로운 노드로 인해서 레드블랙 조건이 틀어지지 않는다.
+	//새로운 노드의 부모가 레드일 경우 case3으로 던진다.
+	//========================================================================
+	void insertCase2Recursive(StructNode* node)
+	{
+		// 부모 노드가 블랙이면은 바로 return 한다.
+		if (node->mParentsNode->mColor == NODE_COLOR::BLACK)
+		{
+			return;
+		}
+		else
+		{
+			insertCase3Recursive(node);
+		}
+	}
+
+	//====================================================================================
+	// 삼촌 노드가 레드일 경우 할아버지 노드를 레드로 바꾸고 삼촌과 부모 노드를 블랙으로 바꾼다.
+	// 이렇게 해서 해당 트리에서의 레드 블랙 트리의 규칙은 지켰지만, 할아버지 노드를 기준으로 
+	// 할아버지 노드의 부모 노드가 레드일 경우 틀어질 수 있기 때문에 할아버지 노드를 다시
+	// case1 로 재귀적으로 들어간다.
+	// 만약 삼촌 노드가 블랙이면 case4로 인자를 전달한다.
+	//=============================================================================
+	void insertCase3Recursive(StructNode* node)
+	{
+		StructNode* uncleNode = getUncle(node);
+		
+		StructNode* grandparent;
+
+		// =================================================================
+		// 삼촌 노드가 레드이면은 내 부모 노드도 레드이기 때문에 할아버지 노드를 레드로 만든 후 부모와 삼촌 노드를 블랙으로 만든다.
+		// 할아버지 노드가 루트이면은 블랙으로 냅둔다.
+		if (uncleNode != nullptr && uncleNode->mColor == NODE_COLOR::RED)
+		{
+			uncleNode->mColor = NODE_COLOR::BLACK;
+			node->mParentsNode->mColor = NODE_COLOR::BLACK;
+			grandparent = getGrandparent(node);
+			
+			if (grandparent != this->mRoot)
+			{
+				grandparent->mColor = NODE_COLOR::RED;
+			}
+
+			// 할아버지 노드가 빨간색으로 변경하였고, 할아버지 노드의 부모 노드가 빨간색일 수 있기 때문에
+			// insertCase1 함수로 인자로 전달하여 재귀적으로 처리한다.
+			insertCase1Recursive(grandparent);
+		}
+		else
+		{
+			// 삼촌 노드가 블랙일 경우 다음 Case4로 인자를 넘긴다.
+			insertCase4Recursive(node);
+		}
+
+	}
+
+
+	//================================================================
+	// 만약 할아버지 노드를 기준으로 일직선이 아닐 경우 회전을 하여도 
+	// 레드 블랙 트리의 틀어진 조건이 교정되지 않기 때문에 할아버지 노드를
+	// 기준으로 일직선으로 만들기 위해 기준 노드의 부모 노드를 기준으로 
+	// 회전한다.
+	//=================================================================
+	void insertCase4Recursive(StructNode* node)
+	{		
+		StructNode* grandparent = getGrandparent(node);
+
+		// 할아버지 노드부터 추가할 노드 까지 일직선이 아닐 경우 부모 노드를 기준으로 
+		// 왼쪽으로 회전을 하고 case5 함수로 인자를 던진다.
+		// 또는 이미 일직선일 경우 바로 case5로 함수를 던진다.
+ 	    if (node->mParentsNode->mRight == node && grandparent->mLeft == node->mParentsNode)
+		{
+			rotateLeft(node->mParentsNode);
+			node = node->mLeft;
+		}
+		else if(node->mParentsNode->mLeft == node && grandparent->mRight == node->mParentsNode)
+		{
+			rotateRight(node->mParentsNode);
+			node = node->mRight;
+		}
+		insertCase5Recursive(node);
+	}
+
+	//==================================================================
+	// 할아버지 노드를 기준으로 오른쪽 일직선일 경우 왼쪽 방향으로 회전시킨다. 
+	// 그리고 할아버지 노드, 삼촌 노드를 레드로 부모 노드를 블랙으로 변경한다.
+	//==================================================================
+	void insertCase5Recursive(StructNode* node)
+	{
+		StructNode* grandparent = getGrandparent(node);
+
+		// 부모 노드의 컬러를 블랙으로 바꾼다.
+		node->mParentsNode->mColor = NODE_COLOR::BLACK;
+		
+		// 할아버지 노드를 레드로 바꾼다.
+		grandparent->mColor = NODE_COLOR::RED;
+
+		// 부모 노드와 일직선이 되는 방향의 반대 방향으로 회전하여 균형을 맞춘다.
+		if (node == node->mParentsNode->mLeft)
+		{
+			rotateRight(grandparent);
+		}
+		else
+		{	
+			rotateLeft(grandparent);
+		}
+	}
+
+
+	void rotateRight(StructNode* pivotNode)
+	{
+		if (pivotNode->mLeft == nullptr)
+		{
+			return;
+		}
+
+		// 기준 노드의 왼쪽 노드
+		StructNode* leftNode = pivotNode->mLeft;
+
+		// 기준 노드의 부모 노드
+		StructNode* parentNode = pivotNode->mParentsNode;
+
+
+		// 기준 노드의 왼쪽 노드의 오른쪽에 자식 노드가 있으면은
+		// 기준 노드의 자식 노드로 전달한다.
+		if (leftNode->mRight != this->mNil && leftNode->mRight != nullptr )
+		{
+			leftNode->mRight->mParentsNode = pivotNode;
+		}
+
+		pivotNode->mLeft = leftNode->mRight;
+
+		pivotNode->mParentsNode = leftNode;
+
+		leftNode->mRight = pivotNode;
+
+		leftNode->mParentsNode = parentNode;
+
+		// 할아버지 노드가 nullptr이 아닐 경우 회전하여 기준이 될 노드를 
+		// 왼쪽 또는 오른쪽으로 연결한다.
+		if (parentNode != nullptr)
+		{
+			if (parentNode->mLeft == pivotNode)
+			{
+				parentNode->mLeft = leftNode;
+			}
+			else
+			{
+				parentNode->mRight = leftNode;
+			}
+		}
+		else
+		{
+			this->mRoot = leftNode;
+		}
+	}
+
+
+	void rotateLeft(StructNode* pivotNode)
+	{
+		if (pivotNode->mRight == nullptr)
+		{
+			return;
+		}
+
+		StructNode* rightNode = pivotNode->mRight;
+
+		StructNode* parentNode = pivotNode->mParentsNode;
+
+		if (rightNode->mLeft != this->mNil && rightNode->mLeft != nullptr)
+		{
+			rightNode->mLeft->mParentsNode = pivotNode;
+
+		}
+
+		pivotNode->mRight = rightNode->mLeft;
+
+		pivotNode->mParentsNode = rightNode;
+
+		rightNode->mLeft = pivotNode;
+
+		rightNode->mParentsNode = parentNode;
+
+		if (parentNode != nullptr) {
+			if (parentNode->mLeft == pivotNode)
+			{
+				parentNode->mLeft = rightNode;
+			}
+			else
+			{
+				parentNode->mRight = rightNode;
+			}
+		}
+		else
+		{
+			this->mRoot = rightNode;
+		}
+
+	}
+
+	// 후위 순회 추력
+	void postorderPrintRecursive(StructNode* pNode, HDC hdc, HBRUSH* redBrush, HBRUSH* blackBrush)
+	{
+
+
 		static int rootX = X_POSITION;
 		static int moveX = X_POSITION;
 
-		if (pNode == nullptr)
+		if (pNode == this->mNil)
 		{
 			return;
 		}
@@ -512,14 +767,14 @@ private:
 
 		moveX /= 2;
 		rootX = rootX - moveX;
-		postorderPrintRecursive(pNode->mLeft,hdc);
+		postorderPrintRecursive(pNode->mLeft,hdc,redBrush, blackBrush);
 		rootX = rootX + moveX;
 		moveX *= 2;
 
 
 		moveX /= 2;
 		rootX = rootX + moveX;
-		postorderPrintRecursive(pNode->mRight, hdc);
+		postorderPrintRecursive(pNode->mRight, hdc, redBrush, blackBrush);
 		rootX = rootX - moveX;
 		moveX *= 2;
 
@@ -548,15 +803,25 @@ private:
 			}
 		}
 
-		Ellipse(hdc, rootX - 20, Y_DUMMY + ((this->mDepth + 1)*80) - 20, rootX + 20, Y_DUMMY + ((this->mDepth + 1) * 80) + 20);
-
+		if (pNode->mColor == NODE_COLOR::BLACK && pNode != this->mNil)
+		{
+			SelectObject(hdc, *blackBrush);
+			Ellipse(hdc, rootX - 20, Y_DUMMY + ((this->mDepth + 1) * 80) - 20, rootX + 20, Y_DUMMY + ((this->mDepth + 1) * 80) + 20);
+		}
+		else if(pNode->mColor == NODE_COLOR::RED && pNode != this->mNil)
+		{
+			SelectObject(hdc, *redBrush);
+			Ellipse(hdc, rootX - 20, Y_DUMMY + ((this->mDepth + 1) * 80) - 20, rootX + 20, Y_DUMMY + ((this->mDepth + 1) * 80) + 20);
+		}
+	
 		char str[20];
 
-		sprintf_s(str, "%d", pNode->mData);
+		if (this->mNil != pNode) 
+		{
+			sprintf_s(str, "%d", pNode->mData);
+			TextOutA(hdc, rootX - 10, Y_DUMMY + ((this->mDepth + 1) * 80) - 10, str, strlen(str));
+		}
 
-		TextOutA(hdc, rootX - 10, Y_DUMMY + ((this->mDepth + 1)*80) - 10,str,strlen(str));
-
-		
 		sprintf_s(str, "%d", this->mNodeCount);
 		TextOutA(hdc, 50, 750, str,strlen(str));
 
@@ -569,6 +834,8 @@ public:
 	int mDepth;
 
 	StructNode* mRoot;
+
+	StructNode* mNil;
 
 	int mNodeCount;
 
