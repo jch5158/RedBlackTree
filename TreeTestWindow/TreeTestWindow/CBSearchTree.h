@@ -295,6 +295,7 @@ private:
 		return (this->mNil == node);
 	}
 
+
 	//===============================================================
 	// 삭제할 노드의 할아버지 노드와 삭제할 노드의 자식 노드를 이어준다.
 	//===============================================================
@@ -328,6 +329,8 @@ private:
 			child = node->mRight;
 		}
 
+		// 이번에 삭제할 노드가 루트이면서, 자식은 Nil만 가지고 있을 경우
+		// this->mRoot를 nullptr로 변경하고 deleteCase는 생략한다.
 		if (this->mRoot == node && child == this->mNil)
 		{
 			this->mRoot = nullptr;
@@ -365,8 +368,13 @@ private:
 
 	void deleteCase2(StructNode* node)
 	{
+		// 형제 노드를 구한다.
 		StructNode* siblingNode = getSibling(node);
 
+		// 만약 형제 노드가 레드일 경우 나의 부모 노드는 무조건 블랙이다.
+		// 형제 노드를 "블랙"으로 만들고 부모 노드를 "레드"로 만든 다음에
+		// node 방향으로 회전하여 블랙의 개수를 맞추기 위한 예비 동작을 한다.
+		// 그 후 deleteCase3 으로 간다.
 		if (siblingNode->mColor == NODE_COLOR::RED)
 		{
 			node->mParentsNode->mColor = NODE_COLOR::RED;
@@ -389,7 +397,10 @@ private:
 	{
 		StructNode* siblingNode = getSibling(node);
 
-
+		// 회전하거나 기존의 형제 노드가 블랙이였다면, 형제의 자식 노드가 nill 이거나 블랙 자식노드이다.
+		// 이 경우에는 형제 노드를 "레드"로 바꿈으로서 해당 내가 속한 서브트리에서의 균형은 맞춰졌다.
+		// 하지만, 부모 노드를 타고 들어오는 경로와 부모노드를 타고오지 않는 경로의 블랙 개수의 차이가 
+		// 있을 수 있기 때문에 부모 노드 부터 다시 deleteCase1을 확인 해 봐야 한다.
 		if (node->mParentsNode->mColor == NODE_COLOR::BLACK &&
 			siblingNode->mColor == NODE_COLOR::BLACK &&
 			siblingNode->mLeft->mColor == NODE_COLOR::BLACK &&
@@ -408,7 +419,8 @@ private:
 	{
 		StructNode* siblingNode = getSibling(node);
 
-
+		// deleteCase2 에서 회전하여 부모 노드가 레드이고 나의 형제 노드가 블랙이면
+		// 형제노드를 "레드"로 바꾸어 주고 부모 노드를 "블랙"으로 변경해 준다.
 		if (node->mParentsNode->mColor == NODE_COLOR::RED &&
 			siblingNode->mColor == NODE_COLOR::BLACK &&
 			siblingNode->mLeft->mColor == NODE_COLOR::BLACK &&
@@ -420,36 +432,37 @@ private:
 		else
 		{
 			deleteCase5(node);
-		}
-		
+		}		
 	}
 
 	void deleteCase5(StructNode* node)
 	{
 		StructNode* siblingNode = getSibling(node);
 		
-		if (siblingNode->mColor == NODE_COLOR::BLACK)
-		{
-
-			if (
+		// 내가 부모 노드의 왼쪽이면서 나의 형제 노드가 블랙이고,  
+		// 형제 노드의 왼쪽 노드가 레드일 경우 레드가 있는 노드의 반대 방향으로 회전을 하여 일직선으로 만든다.
+		// 오른쪽 방향으로 회전을 하여 일직선으로 만들어준다. 
+		// else는 이의 반대 방향으로 해준다. 
+		if (
 			node == node->mParentsNode->mLeft &&
 			siblingNode->mRight->mColor == NODE_COLOR::BLACK &&
-			siblingNode->mLeft->mColor == NODE_COLOR::RED)
-			{
-				siblingNode->mColor = NODE_COLOR::RED;
-				siblingNode->mLeft->mColor = NODE_COLOR::BLACK;
-				rotateRight(siblingNode);
-			}
-			else if(
+			siblingNode->mLeft->mColor == NODE_COLOR::RED
+			)
+		{
+			siblingNode->mColor = NODE_COLOR::RED;
+			siblingNode->mLeft->mColor = NODE_COLOR::BLACK;
+			rotateRight(siblingNode);
+		}
+		else if 
+			(
 			node == node->mParentsNode->mRight &&
-			siblingNode->mLeft->mColor == NODE_COLOR::BLACK && 
-			siblingNode->mRight->mColor == NODE_COLOR::RED)
-			{
-				siblingNode->mColor = NODE_COLOR::RED;
-				siblingNode->mRight->mColor = NODE_COLOR::BLACK;
-				rotateLeft(siblingNode);
-			}
-
+			siblingNode->mLeft->mColor == NODE_COLOR::BLACK &&
+			siblingNode->mRight->mColor == NODE_COLOR::RED 
+			)
+		{
+			siblingNode->mColor = NODE_COLOR::RED;
+			siblingNode->mRight->mColor = NODE_COLOR::BLACK;
+			rotateLeft(siblingNode);
 		}
 
 		deleteCase6(node);
@@ -459,11 +472,12 @@ private:
 	void deleteCase6(StructNode* node)
 	{
 		StructNode* siblingNode = getSibling(node);
-
 		
 		siblingNode->mColor = node->mParentsNode->mColor;
 		node->mParentsNode->mColor = NODE_COLOR::BLACK;
 
+		// 일직선으로 된 형제 노드와 자식들을 지운 노드가 있던 방향으로 회전한다.
+		// 레드로 변경된 deleteCase5의 형제 노드를 블랙으로 바꾸어 블랙의 균형을 맞추어 준다. 
 		if (node == node->mParentsNode->mLeft)
 		{
 			siblingNode->mRight->mColor = NODE_COLOR::BLACK;
@@ -673,8 +687,8 @@ private:
 		StructNode* parentNode = pivotNode->mParentsNode;
 
 
-		// 기준 노드의 왼쪽 노드의 오른쪽에 자식 노드가 있으면은
-		// 기준 노드의 자식 노드로 전달한다.
+		// 기준 노드의 왼쪽 노드의 오른쪽에 자식 노드가 있으면은 기준 노드의 자식 노드로 전달한다.
+		// 오른쪽으로 넘겨야 될 노드가 Nil 일 경우 부모 연결을 생략한다.	
 		if (leftNode->mRight != this->mNil && leftNode->mRight != nullptr )
 		{
 			leftNode->mRight->mParentsNode = pivotNode;
@@ -719,6 +733,7 @@ private:
 
 		StructNode* parentNode = pivotNode->mParentsNode;
 
+		// 넘겨야될 노드가 Nil일 경우 부모 연결은 생략한다.
 		if (rightNode->mLeft != this->mNil && rightNode->mLeft != nullptr)
 		{
 			rightNode->mLeft->mParentsNode = pivotNode;
